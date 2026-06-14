@@ -2,7 +2,7 @@
 // same surface the v5 store exposes, so both panels drive the identical OperationRunner/EventLog.
 
 import { makeAutoObservable, runInAction } from "@phantasma/link-react";
-import { PhantasmaLink, ProofOfWork, verifyData } from "phantasma-sdk-ts/public";
+import { PhantasmaLink, ProofOfWork } from "phantasma-sdk-ts/public";
 import type { PanelLogEntry, PanelLogKind } from "@/components/panel/EventLog";
 import { buildTransferScript, buildCarbonTransferMsg, parseAmountToAtoms, utf8ToHex, TOKENS } from "@/lib/tx";
 
@@ -117,25 +117,16 @@ export class V4LinkStore {
 		return this.runCallback(
 			"signData",
 			(cb, errcb) => this.link!.signData(hex, cb, errcb),
-			(r) => {
-				const sig = String(r.signature ?? "");
-				let verified: boolean | null = null;
-				try {
-					verified = verifyData(hex, sig, this.address ?? "");
-				} catch {
-					verified = null;
-				}
-				return `verified: ${verified === null ? "n/a" : verified ? "VALID" : "INVALID"} | ${sig.slice(0, 16)}...`;
-			},
+			(r) => `signature ${String(r.signature ?? "").slice(0, 28)}...`,
 		);
 	}
 
-	transferSoul(to: string, amount: string, token: string, format: "script" | "carbon", tokenId: string) {
+	transferSoul(to: string, amount: string, token: string, format: "script" | "carbon") {
 		try {
 			const meta = TOKENS[token];
 			const atoms = parseAmountToAtoms(amount, meta?.decimals ?? 8);
 			if (format === "carbon") {
-				const txMsg = buildCarbonTransferMsg(this.address!, to, atoms, BigInt(tokenId));
+				const txMsg = buildCarbonTransferMsg(this.address!, to, atoms, meta?.carbonTokenId ?? 0n);
 				return this.runCallback(
 					"signCarbonTx",
 					(cb, errcb) => this.link!.signCarbonTxAndBroadcast(txMsg, cb, errcb),

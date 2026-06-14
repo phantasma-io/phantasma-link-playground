@@ -28,20 +28,14 @@ export const V5Panel = observer(function V5Panel() {
 		amount: b.value,
 	}));
 
-	const transferSoul = (
-		to: string,
-		amount: string,
-		token: string,
-		format: "script" | "carbon",
-		tokenId: string,
-	) => {
+	const transferSoul = (to: string, amount: string, token: string, format: "script" | "carbon") => {
 		if (!link.address) return;
 		try {
 			const meta = TOKENS[token];
 			const atoms = parseAmountToAtoms(amount, meta?.decimals ?? 8);
 			const tx =
 				format === "carbon"
-					? buildCarbonTransferTxBase64(link.address, to, atoms, BigInt(tokenId))
+					? buildCarbonTransferTxBase64(link.address, to, atoms, meta?.carbonTokenId ?? 0n)
 					: buildTransferTxBase64(meta?.symbol ?? token, link.address, to, atoms, nexus);
 			void link.sendTransaction({ format: format === "carbon" ? TxFormat.Carbon : TxFormat.Script, tx });
 		} catch (e) {

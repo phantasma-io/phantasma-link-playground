@@ -15,13 +15,7 @@ export interface OperationRunnerProps {
 	onGetChains: () => void;
 	onGetWalletInfo?: () => void;
 	onSignMessage: (message: string) => void;
-	onTransferSoul: (
-		to: string,
-		amount: string,
-		token: string,
-		format: "script" | "carbon",
-		tokenId: string,
-	) => void;
+	onTransferSoul: (to: string, amount: string, token: string, format: "script" | "carbon") => void;
 }
 
 export function OperationRunner({
@@ -37,12 +31,6 @@ export function OperationRunner({
 	const [amount, setAmount] = useState("0.05");
 	const [token, setToken] = useState("SOUL");
 	const [format, setFormat] = useState<"script" | "carbon">("script");
-	const [tokenId, setTokenId] = useState(String(TOKENS.SOUL.carbonTokenId));
-
-	const changeToken = (sym: string) => {
-		setToken(sym);
-		setTokenId(String(TOKENS[sym]?.carbonTokenId ?? 0n));
-	};
 
 	const anyBusy = !!busyOp;
 	const busy = (...labels: string[]) => labels.includes(busyOp ?? "");
@@ -92,7 +80,7 @@ export function OperationRunner({
 					<select
 						className={cn(inputClass, "w-auto")}
 						value={token}
-						onChange={(e) => changeToken(e.target.value)}
+						onChange={(e) => setToken(e.target.value)}
 						aria-label="Token"
 					>
 						{Object.keys(TOKENS).map((sym) => (
@@ -110,26 +98,10 @@ export function OperationRunner({
 						<option value="script">Script (VM)</option>
 						<option value="carbon">Carbon</option>
 					</select>
-					{format === "carbon" ? (
-						<input
-							className={cn(inputClass, "w-20")}
-							value={tokenId}
-							onChange={(e) => setTokenId(e.target.value)}
-							placeholder="token id"
-							inputMode="numeric"
-							aria-label="Carbon token id"
-						/>
-					) : null}
 					<Button
 						size="sm"
-						disabled={
-							disabled ||
-							anyBusy ||
-							!recipient.trim() ||
-							!amount.trim() ||
-							(format === "carbon" && !tokenId.trim())
-						}
-						onClick={() => onTransferSoul(recipient, amount, token, format, tokenId)}
+						disabled={disabled || anyBusy || !recipient.trim() || !amount.trim()}
+						onClick={() => onTransferSoul(recipient, amount, token, format)}
 					>
 						{busy("sendTransaction", "signTx", "signCarbonTx") ? "Sending..." : `Send ${token}`}
 					</Button>
