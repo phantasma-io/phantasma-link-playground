@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TOKENS } from "@/lib/tx";
 
 const inputClass =
 	"w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -14,7 +15,13 @@ export interface OperationRunnerProps {
 	onGetChains: () => void;
 	onGetWalletInfo?: () => void;
 	onSignMessage: (message: string) => void;
-	onTransferSoul: (to: string, amount: string, format: "script" | "carbon", tokenId: string) => void;
+	onTransferSoul: (
+		to: string,
+		amount: string,
+		token: string,
+		format: "script" | "carbon",
+		tokenId: string,
+	) => void;
 }
 
 export function OperationRunner({
@@ -28,8 +35,14 @@ export function OperationRunner({
 	const [message, setMessage] = useState("Hello from the Phantasma Link Playground");
 	const [recipient, setRecipient] = useState("");
 	const [amount, setAmount] = useState("0.05");
+	const [token, setToken] = useState("SOUL");
 	const [format, setFormat] = useState<"script" | "carbon">("script");
-	const [tokenId, setTokenId] = useState("1");
+	const [tokenId, setTokenId] = useState(String(TOKENS.SOUL.carbonTokenId));
+
+	const changeToken = (sym: string) => {
+		setToken(sym);
+		setTokenId(String(TOKENS[sym]?.carbonTokenId ?? 0n));
+	};
 
 	const anyBusy = !!busyOp;
 	const busy = (...labels: string[]) => labels.includes(busyOp ?? "");
@@ -61,7 +74,7 @@ export function OperationRunner({
 			</div>
 
 			<div className="space-y-2">
-				<span className="text-xs font-medium text-muted-foreground">Send SOUL</span>
+				<span className="text-xs font-medium text-muted-foreground">Send tokens</span>
 				<input
 					className={inputClass}
 					value={recipient}
@@ -78,6 +91,18 @@ export function OperationRunner({
 					/>
 					<select
 						className={cn(inputClass, "w-auto")}
+						value={token}
+						onChange={(e) => changeToken(e.target.value)}
+						aria-label="Token"
+					>
+						{Object.keys(TOKENS).map((sym) => (
+							<option key={sym} value={sym}>
+								{sym}
+							</option>
+						))}
+					</select>
+					<select
+						className={cn(inputClass, "w-auto")}
 						value={format}
 						onChange={(e) => setFormat(e.target.value as "script" | "carbon")}
 						aria-label="Transaction format"
@@ -87,7 +112,7 @@ export function OperationRunner({
 					</select>
 					{format === "carbon" ? (
 						<input
-							className={cn(inputClass, "w-24")}
+							className={cn(inputClass, "w-20")}
 							value={tokenId}
 							onChange={(e) => setTokenId(e.target.value)}
 							placeholder="token id"
@@ -104,9 +129,9 @@ export function OperationRunner({
 							!amount.trim() ||
 							(format === "carbon" && !tokenId.trim())
 						}
-						onClick={() => onTransferSoul(recipient, amount, format, tokenId)}
+						onClick={() => onTransferSoul(recipient, amount, token, format, tokenId)}
 					>
-						{busy("sendTransaction", "signTx", "signCarbonTx") ? "Sending..." : "Send SOUL"}
+						{busy("sendTransaction", "signTx", "signCarbonTx") ? "Sending..." : `Send ${token}`}
 					</Button>
 				</div>
 			</div>

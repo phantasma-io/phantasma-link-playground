@@ -15,40 +15,53 @@ import {
 } from "phantasma-sdk-ts/public";
 import { bytesToBase64 } from "@phantasma/link-react";
 
-const SOUL_DECIMALS = 8;
 const GAS_PRICE = 100000n;
 const GAS_LIMIT = 21000n;
 const CARBON_MAX_GAS = 100000n;
 
-/** Parse a decimal SOUL string (e.g. "0.05") into 8-decimal atoms. Throws on bad input. */
-export function parseSoulToAtoms(input: string): bigint {
+/** A token the playground can send. `decimals` drives amount parsing (SOUL 8, KCAL 10);
+ * `carbonTokenId` is the on-chain numeric id the Carbon format transfers by. */
+export interface TokenMeta {
+	symbol: string;
+	decimals: number;
+	carbonTokenId: bigint;
+}
+
+export const TOKENS: Record<string, TokenMeta> = {
+	SOUL: { symbol: "SOUL", decimals: 8, carbonTokenId: 0n },
+	KCAL: { symbol: "KCAL", decimals: 10, carbonTokenId: 1n },
+};
+
+/** Parse a decimal amount string (e.g. "0.05") into the token's atoms. Throws on bad input. */
+export function parseAmountToAtoms(input: string, decimals: number): bigint {
 	const s = input.trim();
 	if (!/^\d+(\.\d+)?$/.test(s)) {
 		throw new Error(`Invalid amount: "${input}"`);
 	}
 	const [whole, frac = ""] = s.split(".");
-	const fracPadded = (frac + "0".repeat(SOUL_DECIMALS)).slice(0, SOUL_DECIMALS);
-	return BigInt(whole) * 10n ** BigInt(SOUL_DECIMALS) + BigInt(fracPadded || "0");
+	const fracPadded = (frac + "0".repeat(decimals)).slice(0, decimals);
+	return BigInt(whole) * 10n ** BigInt(decimals) + BigInt(fracPadded || "0");
 }
 
-/** The SOUL-transfer VM script (hex): allowGas -> transferTokens -> spendGas. */
-export function buildSoulTransferScript(from: string, to: string, amountAtoms: bigint): string {
+/** A fungible-transfer VM script (hex): allowGas -> transferTokens -> spendGas. */
+export function buildTransferScript(symbol: string, from: string, to: string, amountAtoms: bigint): string {
 	return new ScriptBuilder()
 		.beginScript()
 		.allowGas(from, Address.nullAddress, GAS_PRICE, GAS_LIMIT)
-		.transferTokens("SOUL", from, to, amountAtoms)
+		.transferTokens(symbol, from, to, amountAtoms)
 		.spendGas(from)
 		.endScript();
 }
 
 /** A full unsigned v5 Transaction (base64) for sendTransaction({ format: "script" }). */
-export function buildSoulTransferTxBase64(
+export function buildTransferTxBase64(
+	symbol: string,
 	from: string,
 	to: string,
 	amountAtoms: bigint,
 	nexus: string,
 ): string {
-	const script = buildSoulTransferScript(from, to, amountAtoms);
+	const script = buildTransferScript(symbol, from, to, amountAtoms);
 	const expiry = new Date(Date.now() + 10 * 60 * 1000);
 	const tx = new Transaction(nexus, "main", script, expiry, "");
 	return bytesToBase64(tx.toByteArray(false));

@@ -52,8 +52,8 @@ export const V4Panel = observer(function V4Panel() {
 						busyOp={store.busyOp}
 						onGetChains={() => void store.getChains()}
 						onSignMessage={(m) => void store.signMessage(m)}
-						onTransferSoul={(to, amount, format, tokenId) =>
-							void store.transferSoul(to, amount, format, tokenId)
+						onTransferSoul={(to, amount, token, format, tokenId) =>
+							void store.transferSoul(to, amount, token, format, tokenId)
 						}
 					/>
 				</div>

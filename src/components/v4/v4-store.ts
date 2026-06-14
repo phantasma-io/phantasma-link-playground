@@ -4,7 +4,7 @@
 import { makeAutoObservable, runInAction } from "@phantasma/link-react";
 import { PhantasmaLink, ProofOfWork, verifyData } from "phantasma-sdk-ts/public";
 import type { PanelLogEntry, PanelLogKind } from "@/components/panel/EventLog";
-import { buildSoulTransferScript, buildCarbonTransferMsg, parseSoulToAtoms, utf8ToHex } from "@/lib/tx";
+import { buildTransferScript, buildCarbonTransferMsg, parseAmountToAtoms, utf8ToHex, TOKENS } from "@/lib/tx";
 
 type V4Status = "idle" | "connecting" | "connected" | "error";
 type LinkResponse = Record<string, unknown> & { success?: boolean; hash?: unknown; signature?: unknown };
@@ -130,9 +130,10 @@ export class V4LinkStore {
 		);
 	}
 
-	transferSoul(to: string, amount: string, format: "script" | "carbon", tokenId: string) {
+	transferSoul(to: string, amount: string, token: string, format: "script" | "carbon", tokenId: string) {
 		try {
-			const atoms = parseSoulToAtoms(amount);
+			const meta = TOKENS[token];
+			const atoms = parseAmountToAtoms(amount, meta?.decimals ?? 8);
 			if (format === "carbon") {
 				const txMsg = buildCarbonTransferMsg(this.address!, to, atoms, BigInt(tokenId));
 				return this.runCallback(
@@ -141,7 +142,7 @@ export class V4LinkStore {
 					(r) => `hash ${String(r.hash ?? "")}`,
 				);
 			}
-			const script = buildSoulTransferScript(this.address!, to, atoms);
+			const script = buildTransferScript(meta?.symbol ?? token, this.address!, to, atoms);
 			return this.runCallback(
 				"signTx",
 				(cb, errcb) => this.link!.signTx(script, null, cb, errcb, ProofOfWork.None, "Ed25519"),

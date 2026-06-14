@@ -6,7 +6,7 @@ import { PanelShell, type PanelStatusTone } from "@/components/panel/PanelShell"
 import { OperationRunner } from "@/components/panel/OperationRunner";
 import { EventLog } from "@/components/panel/EventLog";
 import { AccountInfo, type AccountBalance } from "@/components/panel/AccountInfo";
-import { buildSoulTransferTxBase64, buildCarbonTransferTxBase64, parseSoulToAtoms } from "@/lib/tx";
+import { buildTransferTxBase64, buildCarbonTransferTxBase64, parseAmountToAtoms, TOKENS } from "@/lib/tx";
 import { NETWORKS, DEFAULT_NETWORK } from "@/lib/dapp";
 
 const selectClass =
@@ -28,14 +28,21 @@ export const V5Panel = observer(function V5Panel() {
 		amount: b.value,
 	}));
 
-	const transferSoul = (to: string, amount: string, format: "script" | "carbon", tokenId: string) => {
+	const transferSoul = (
+		to: string,
+		amount: string,
+		token: string,
+		format: "script" | "carbon",
+		tokenId: string,
+	) => {
 		if (!link.address) return;
 		try {
-			const atoms = parseSoulToAtoms(amount);
+			const meta = TOKENS[token];
+			const atoms = parseAmountToAtoms(amount, meta?.decimals ?? 8);
 			const tx =
 				format === "carbon"
 					? buildCarbonTransferTxBase64(link.address, to, atoms, BigInt(tokenId))
-					: buildSoulTransferTxBase64(link.address, to, atoms, nexus);
+					: buildTransferTxBase64(meta?.symbol ?? token, link.address, to, atoms, nexus);
 			void link.sendTransaction({ format: format === "carbon" ? TxFormat.Carbon : TxFormat.Script, tx });
 		} catch (e) {
 			link.log("error", "sendTransaction", e instanceof Error ? e.message : String(e));
