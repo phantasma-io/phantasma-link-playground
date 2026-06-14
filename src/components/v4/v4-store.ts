@@ -2,7 +2,7 @@
 // same surface the v5 store exposes, so both panels drive the identical OperationRunner/EventLog.
 
 import { makeAutoObservable, runInAction } from "@phantasma/link-react";
-import { PhantasmaLink, ProofOfWork } from "phantasma-sdk-ts/public";
+import { PhantasmaLink, ProofOfWork, verifyData } from "phantasma-sdk-ts/public";
 import type { PanelLogEntry, PanelLogKind } from "@/components/panel/EventLog";
 import { buildTransferScript, buildCarbonTransferMsg, parseAmountToAtoms, utf8ToHex, TOKENS } from "@/lib/tx";
 
@@ -117,7 +117,18 @@ export class V4LinkStore {
 		return this.runCallback(
 			"signData",
 			(cb, errcb) => this.link!.signData(hex, cb, errcb),
-			(r) => `signature ${String(r.signature ?? "").slice(0, 28)}...`,
+			(r) => {
+				const sig = String(r.signature ?? "");
+				const random = String(r.random ?? "");
+				let verified: boolean | null = null;
+				try {
+					// v4 signData signs `random || data` and returns the random it prepended.
+					verified = verifyData(random + hex, sig, this.address ?? "");
+				} catch {
+					verified = null;
+				}
+				return `verified ${verified === null ? "n/a" : verified ? "VALID" : "INVALID"} | ${sig.slice(0, 16)}...`;
+			},
 		);
 	}
 
