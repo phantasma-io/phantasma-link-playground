@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { observer } from "mobx-react";
+import { observer } from "@phantasma/link-react";
 import { Button } from "@/components/ui/button";
 import { PanelShell, type PanelStatusTone } from "@/components/panel/PanelShell";
 import { OperationRunner } from "@/components/panel/OperationRunner";

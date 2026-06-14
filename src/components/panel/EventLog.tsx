@@ -1,6 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
+import { observer } from "@phantasma/link-react";
 import { cn } from "@/lib/utils";
 
 export type PanelLogKind = "info" | "request" | "result" | "event" | "error";
@@ -27,7 +28,13 @@ function clock(ts: number): string {
 	return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-export function EventLog({ logs, onClear }: { logs: PanelLogEntry[]; onClear: () => void }) {
+export const EventLog = observer(function EventLog({
+	logs,
+	onClear,
+}: {
+	logs: PanelLogEntry[];
+	onClear: () => void;
+}) {
 	return (
 		<div className="flex h-full flex-col">
 			<div className="mb-2 flex items-center justify-between">
@@ -60,4 +67,4 @@ export function EventLog({ logs, onClear }: { logs: PanelLogEntry[]; onClear: ()
 			</div>
 		</div>
 	);
-}
+});
