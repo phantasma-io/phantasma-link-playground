@@ -8,7 +8,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
 	title: "Phantasma Link Playground",
-	description: "Test and compare Phantasma Link v5 and v4 dApp-wallet flows side by side.",
+	description: "Test the Phantasma wallet and the Link protocol (v5 and v4).",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

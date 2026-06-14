@@ -14,7 +14,7 @@ export interface OperationRunnerProps {
 	onGetChains: () => void;
 	onGetWalletInfo?: () => void;
 	onSignMessage: (message: string) => void;
-	onTransferSoul: (to: string, amount: string) => void;
+	onTransferSoul: (to: string, amount: string, format: "script" | "carbon", tokenId: string) => void;
 }
 
 export function OperationRunner({
@@ -28,6 +28,8 @@ export function OperationRunner({
 	const [message, setMessage] = useState("Hello from the Phantasma Link Playground");
 	const [recipient, setRecipient] = useState("");
 	const [amount, setAmount] = useState("0.05");
+	const [format, setFormat] = useState<"script" | "carbon">("script");
+	const [tokenId, setTokenId] = useState("1");
 
 	const anyBusy = !!busyOp;
 	const busy = (...labels: string[]) => labels.includes(busyOp ?? "");
@@ -66,20 +68,45 @@ export function OperationRunner({
 					onChange={(e) => setRecipient(e.target.value)}
 					placeholder="Recipient address (P...)"
 				/>
-				<div className="flex gap-2">
+				<div className="flex flex-wrap items-center gap-2">
 					<input
-						className={cn(inputClass, "w-32")}
+						className={cn(inputClass, "w-24")}
 						value={amount}
 						onChange={(e) => setAmount(e.target.value)}
 						placeholder="0.05"
 						inputMode="decimal"
 					/>
+					<select
+						className={cn(inputClass, "w-auto")}
+						value={format}
+						onChange={(e) => setFormat(e.target.value as "script" | "carbon")}
+						aria-label="Transaction format"
+					>
+						<option value="script">Script (VM)</option>
+						<option value="carbon">Carbon</option>
+					</select>
+					{format === "carbon" ? (
+						<input
+							className={cn(inputClass, "w-24")}
+							value={tokenId}
+							onChange={(e) => setTokenId(e.target.value)}
+							placeholder="token id"
+							inputMode="numeric"
+							aria-label="Carbon token id"
+						/>
+					) : null}
 					<Button
 						size="sm"
-						disabled={disabled || anyBusy || !recipient.trim() || !amount.trim()}
-						onClick={() => onTransferSoul(recipient, amount)}
+						disabled={
+							disabled ||
+							anyBusy ||
+							!recipient.trim() ||
+							!amount.trim() ||
+							(format === "carbon" && !tokenId.trim())
+						}
+						onClick={() => onTransferSoul(recipient, amount, format, tokenId)}
 					>
-						{busy("sendTransaction", "signTx") ? "Sending..." : "Send SOUL"}
+						{busy("sendTransaction", "signTx", "signCarbonTx") ? "Sending..." : "Send SOUL"}
 					</Button>
 				</div>
 			</div>

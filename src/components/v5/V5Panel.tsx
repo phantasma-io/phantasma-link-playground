@@ -6,7 +6,7 @@ import { PanelShell, type PanelStatusTone } from "@/components/panel/PanelShell"
 import { OperationRunner } from "@/components/panel/OperationRunner";
 import { EventLog } from "@/components/panel/EventLog";
 import { AccountInfo, type AccountBalance } from "@/components/panel/AccountInfo";
-import { buildSoulTransferTxBase64, parseSoulToAtoms } from "@/lib/tx";
+import { buildSoulTransferTxBase64, buildCarbonTransferTxBase64, parseSoulToAtoms } from "@/lib/tx";
 import { NETWORKS, DEFAULT_NETWORK } from "@/lib/dapp";
 
 const selectClass =
@@ -28,11 +28,15 @@ export const V5Panel = observer(function V5Panel() {
 		amount: b.value,
 	}));
 
-	const transferSoul = (to: string, amount: string) => {
+	const transferSoul = (to: string, amount: string, format: "script" | "carbon", tokenId: string) => {
 		if (!link.address) return;
 		try {
-			const tx = buildSoulTransferTxBase64(link.address, to, parseSoulToAtoms(amount), nexus);
-			void link.sendTransaction({ format: TxFormat.Script, tx });
+			const atoms = parseSoulToAtoms(amount);
+			const tx =
+				format === "carbon"
+					? buildCarbonTransferTxBase64(link.address, to, atoms, BigInt(tokenId))
+					: buildSoulTransferTxBase64(link.address, to, atoms, nexus);
+			void link.sendTransaction({ format: format === "carbon" ? TxFormat.Carbon : TxFormat.Script, tx });
 		} catch (e) {
 			link.log("error", "sendTransaction", e instanceof Error ? e.message : String(e));
 		}
@@ -55,8 +59,11 @@ export const V5Panel = observer(function V5Panel() {
 							<select
 								className={selectClass}
 								value={link.transport}
-								onChange={(e) => void link.setTransport(e.target.value as "deeplink" | "relay")}
+								onChange={(e) =>
+									void link.setTransport(e.target.value as "loopback" | "deeplink" | "relay")
+								}
 							>
+								<option value="loopback">Loopback (desktop socket)</option>
 								<option value="relay">Relay (cross-device QR)</option>
 								<option value="deeplink">Deeplink (same device)</option>
 							</select>

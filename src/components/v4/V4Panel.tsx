@@ -33,14 +33,13 @@ export const V4Panel = observer(function V4Panel() {
 					<Button variant="outline" size="sm" onClick={() => store.disconnect()}>
 						Disconnect
 					</Button>
+				) : store.status === "connecting" ? (
+					<Button variant="outline" size="sm" onClick={() => store.cancel()}>
+						Cancel
+					</Button>
 				) : (
-					<Button
-						variant="outline"
-						size="sm"
-						disabled={store.status === "connecting"}
-						onClick={() => store.connect()}
-					>
-						{store.status === "connecting" ? "Connecting..." : "Connect wallet"}
+					<Button variant="outline" size="sm" onClick={() => store.connect()}>
+						Connect wallet
 					</Button>
 				)
 			}
@@ -53,7 +52,9 @@ export const V4Panel = observer(function V4Panel() {
 						busyOp={store.busyOp}
 						onGetChains={() => void store.getChains()}
 						onSignMessage={(m) => void store.signMessage(m)}
-						onTransferSoul={(to, amount) => void store.transferSoul(to, amount)}
+						onTransferSoul={(to, amount, format, tokenId) =>
+							void store.transferSoul(to, amount, format, tokenId)
+						}
 					/>
 				</div>
 				<EventLog logs={store.logs} onClear={() => store.clearLogs()} />

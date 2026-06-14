@@ -7,7 +7,7 @@ export function Header() {
 				<div>
 					<h1 className="text-lg font-semibold tracking-tight sm:text-xl">Phantasma Link Playground</h1>
 					<p className="text-xs text-muted-foreground sm:text-sm">
-						Test and compare v5 and v4 dApp-wallet flows side by side
+						Test the wallet and the Link protocol - v5 and v4
 					</p>
 				</div>
 				<ThemeToggle />

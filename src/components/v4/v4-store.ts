@@ -2,9 +2,9 @@
 // same surface the v5 store exposes, so both panels drive the identical OperationRunner/EventLog.
 
 import { makeAutoObservable, runInAction } from "@phantasma/link-react";
-import { PhantasmaLink, ProofOfWork } from "phantasma-sdk-ts/public";
+import { PhantasmaLink, ProofOfWork, verifyData } from "phantasma-sdk-ts/public";
 import type { PanelLogEntry, PanelLogKind } from "@/components/panel/EventLog";
-import { buildSoulTransferScript, parseSoulToAtoms, utf8ToHex } from "@/lib/tx";
+import { buildSoulTransferScript, buildCarbonTransferMsg, parseSoulToAtoms, utf8ToHex } from "@/lib/tx";
 
 type V4Status = "idle" | "connecting" | "connected" | "error";
 type LinkResponse = Record<string, unknown> & { success?: boolean; hash?: unknown; signature?: unknown };
@@ -103,28 +103,54 @@ export class V4LinkStore {
 		);
 	}
 
+	cancel(): void {
+		runInAction(() => {
+			this.status = "idle";
+			this.address = undefined;
+			this.link = undefined;
+		});
+		this.log("info", "connect cancelled");
+	}
+
 	signMessage(message: string) {
 		const hex = utf8ToHex(message);
 		return this.runCallback(
 			"signData",
 			(cb, errcb) => this.link!.signData(hex, cb, errcb),
-			(r) => `signature ${String(r.signature ?? "").slice(0, 24)}...`,
+			(r) => {
+				const sig = String(r.signature ?? "");
+				let verified: boolean | null = null;
+				try {
+					verified = verifyData(hex, sig, this.address ?? "");
+				} catch {
+					verified = null;
+				}
+				return `verified: ${verified === null ? "n/a" : verified ? "VALID" : "INVALID"} | ${sig.slice(0, 16)}...`;
+			},
 		);
 	}
 
-	transferSoul(to: string, amount: string) {
-		let script: string;
+	transferSoul(to: string, amount: string, format: "script" | "carbon", tokenId: string) {
 		try {
-			script = buildSoulTransferScript(this.address!, to, parseSoulToAtoms(amount));
+			const atoms = parseSoulToAtoms(amount);
+			if (format === "carbon") {
+				const txMsg = buildCarbonTransferMsg(this.address!, to, atoms, BigInt(tokenId));
+				return this.runCallback(
+					"signCarbonTx",
+					(cb, errcb) => this.link!.signCarbonTxAndBroadcast(txMsg, cb, errcb),
+					(r) => `hash ${String(r.hash ?? "")}`,
+				);
+			}
+			const script = buildSoulTransferScript(this.address!, to, atoms);
+			return this.runCallback(
+				"signTx",
+				(cb, errcb) => this.link!.signTx(script, null, cb, errcb, ProofOfWork.None, "Ed25519"),
+				(r) => `hash ${String(r.hash ?? "")}`,
+			);
 		} catch (e) {
-			this.log("error", "signTx", errMsg(e));
+			this.log("error", "send", errMsg(e));
 			return Promise.resolve();
 		}
-		return this.runCallback(
-			"signTx",
-			(cb, errcb) => this.link!.signTx(script, null, cb, errcb, ProofOfWork.None, "Ed25519"),
-			(r) => `hash ${String(r.hash ?? "")}`,
-		);
 	}
 
 	private runCallback(

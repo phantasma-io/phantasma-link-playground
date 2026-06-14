@@ -8,8 +8,8 @@ export default function Home() {
 			<Header />
 			<main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
 				<p className="text-sm text-muted-foreground">
-					Connect a wallet to each protocol and run the same operations to compare Phantasma Link
-					v5 (top) and v4 (bottom) side by side.
+					Connect a wallet to each protocol and run the same operations against it to test the
+					wallet and the Link protocol - v5 (top), v4 (bottom).
 				</p>
 				<V5Panel />
 				<V4Panel />
