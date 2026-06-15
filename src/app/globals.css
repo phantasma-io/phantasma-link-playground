@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* The @phantasma/link-react package ships UI (ConnectWidget, its dropdown, buttons) whose Tailwind
+   classes live OUTSIDE this app's source, so Tailwind must scan the package too. Without this the
+   connect dropdown's utilities (bg-popover, z-50, shadow, ...) are never generated and it renders
+   unstyled - transparent and mispositioned/unclickable. The package's node_modules/dist are
+   auto-ignored; only its component source is scanned. */
+@source "../../../phantasma-link-react";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
