@@ -15,7 +15,7 @@ export interface OperationRunnerProps {
 	onGetChains: () => void;
 	onGetWalletInfo?: () => void;
 	onSignMessage: (message: string) => void;
-	onTransferSoul: (to: string, amount: string, token: string, format: "script" | "carbon") => void;
+	onSendTokens: (to: string, amount: string, token: string, format: "script" | "carbon") => void;
 }
 
 export function OperationRunner({
@@ -24,7 +24,7 @@ export function OperationRunner({
 	onGetChains,
 	onGetWalletInfo,
 	onSignMessage,
-	onTransferSoul,
+	onSendTokens,
 }: OperationRunnerProps) {
 	const [message, setMessage] = useState("Hello from the Phantasma Link Playground");
 	const [recipient, setRecipient] = useState("");
@@ -101,7 +101,7 @@ export function OperationRunner({
 					<Button
 						size="sm"
 						disabled={disabled || anyBusy || !recipient.trim() || !amount.trim()}
-						onClick={() => onTransferSoul(recipient, amount, token, format)}
+						onClick={() => onSendTokens(recipient, amount, token, format)}
 					>
 						{busy("sendTransaction", "signTx", "signCarbonTx") ? "Sending..." : `Send ${token}`}
 					</Button>

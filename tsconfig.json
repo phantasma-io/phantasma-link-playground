@@ -37,6 +37,7 @@
   ],
   "exclude": [
     "node_modules",
-    "USE_ONLY_AS_DOCUMENTATION"
+    "USE_ONLY_AS_DOCUMENTATION",
+    "**/*.test.ts"
   ]
 }

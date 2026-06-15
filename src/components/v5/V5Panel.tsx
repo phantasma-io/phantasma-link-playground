@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { observer, usePhantasmaLink, ConnectWidget, TxFormat } from "@phantasma/link-react";
+import { observer, usePhantasmaLink, ConnectWidget, TxFormat, errMsg } from "@phantasma/link-react";
 import { PanelShell, type PanelStatusTone } from "@/components/panel/PanelShell";
 import { OperationRunner } from "@/components/panel/OperationRunner";
 import { EventLog } from "@/components/panel/EventLog";
@@ -28,7 +28,7 @@ export const V5Panel = observer(function V5Panel() {
 		amount: b.value,
 	}));
 
-	const transferSoul = (to: string, amount: string, token: string, format: "script" | "carbon") => {
+	const sendTokens = (to: string, amount: string, token: string, format: "script" | "carbon") => {
 		if (!link.address) return;
 		try {
 			const meta = TOKENS[token];
@@ -39,7 +39,7 @@ export const V5Panel = observer(function V5Panel() {
 					: buildTransferTxBase64(meta?.symbol ?? token, link.address, to, atoms, nexus);
 			void link.sendTransaction({ format: format === "carbon" ? TxFormat.Carbon : TxFormat.Script, tx });
 		} catch (e) {
-			link.log("error", "sendTransaction", e instanceof Error ? e.message : String(e));
+			link.log("error", "sendTransaction", errMsg(e));
 		}
 	};
 
@@ -80,14 +80,14 @@ export const V5Panel = observer(function V5Panel() {
 							</select>
 						</label>
 					</div>
-					<AccountInfo address={link.address} balances={balances} />
+					<AccountInfo address={link.address} balances={balances} wallet={link.walletInfo} />
 					<OperationRunner
 						disabled={!link.connected}
 						busyOp={link.busyOp}
 						onGetChains={() => void link.getChains()}
 						onGetWalletInfo={() => void link.getWalletInfo()}
 						onSignMessage={(m) => void link.signMessage(m)}
-						onTransferSoul={transferSoul}
+						onSendTokens={sendTokens}
 					/>
 				</div>
 				<EventLog logs={link.logs} onClear={() => link.clearLogs()} />

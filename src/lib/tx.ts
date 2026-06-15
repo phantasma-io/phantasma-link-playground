@@ -27,8 +27,12 @@ export interface TokenMeta {
 	carbonTokenId: bigint;
 }
 
+// Carbon token ids are assigned on-chain; the wallet resolves a transfer's numeric id back to a
+// symbol via getToken().carbonId. Verified on mainnet and localnet (2026-06-14): SOUL=2, KCAL=1.
+// Carbon id 0 does not resolve - the wallet error "Cannot load token for carbon ID 0" came from a
+// previous SOUL=0 here.
 export const TOKENS: Record<string, TokenMeta> = {
-	SOUL: { symbol: "SOUL", decimals: 8, carbonTokenId: 0n },
+	SOUL: { symbol: "SOUL", decimals: 8, carbonTokenId: 2n },
 	KCAL: { symbol: "KCAL", decimals: 10, carbonTokenId: 1n },
 };
 
@@ -69,7 +73,13 @@ export function buildTransferTxBase64(
 
 /** Build a Carbon TxMsg for a fungible transfer. v4 signs the TxMsg object directly
  * (signCarbonTxAndBroadcast); v5 sends its serialized bytes. Carbon transfers by numeric token
- * id, not symbol, so `tokenId` must be the on-chain id of the token being sent. */
+ * id, not symbol, so `tokenId` must be the on-chain id of the token being sent.
+ *
+ * The Carbon `expiry` is a unix timestamp in MILLISECONDS (the chain compares it against its own
+ * millisecond clock; a seconds value is read as the far past and rejected as "Transaction has
+ * expired"). This matches the wallet (PoltergeistLite WalletTransferService:
+ * `DateTimeOffset.UtcNow.AddSeconds(30).ToUnixTimeMilliseconds()`). We use a longer window than the
+ * wallet's 30s because a dApp tx must survive the user's approval round-trip. */
 export function buildCarbonTransferMsg(
 	from: string,
 	to: string,
@@ -80,7 +90,7 @@ export function buildCarbonTransferMsg(
 	const receiver = new Bytes32(Address.fromText(to).getPublicKey());
 	return new TxMsg(
 		TxTypes.TransferFungible,
-		BigInt(Math.floor(Date.now() / 1000) + 600),
+		BigInt(Date.now() + 10 * 60 * 1000),
 		CARBON_MAX_GAS,
 		0n,
 		sender,

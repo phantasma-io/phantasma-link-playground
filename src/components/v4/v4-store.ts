@@ -1,13 +1,13 @@
 // A small MobX store that wraps the legacy callback-based `PhantasmaLink` (v1-v4) behind the
 // same surface the v5 store exposes, so both panels drive the identical OperationRunner/EventLog.
 
-import { makeAutoObservable, runInAction } from "@phantasma/link-react";
+import { makeAutoObservable, runInAction, errMsg } from "@phantasma/link-react";
 import { PhantasmaLink, ProofOfWork, verifyData } from "phantasma-sdk-ts/public";
 import type { PanelLogEntry, PanelLogKind } from "@/components/panel/EventLog";
 import { buildTransferScript, buildCarbonTransferMsg, parseAmountToAtoms, utf8ToHex, TOKENS } from "@/lib/tx";
 
 type V4Status = "idle" | "connecting" | "connected" | "error";
-type LinkResponse = Record<string, unknown> & { success?: boolean; hash?: unknown; signature?: unknown };
+type LinkResponse = Record<string, unknown> & { hash?: unknown; signature?: unknown };
 
 let seq = 0;
 const MAX_LOG = 200;
@@ -17,7 +17,6 @@ export class V4LinkStore {
 	address?: string;
 	nexus?: string;
 	busyOp?: string;
-	error?: string;
 	logs: PanelLogEntry[] = [];
 	private link?: PhantasmaLink;
 
@@ -42,7 +41,6 @@ export class V4LinkStore {
 
 	connect(): void {
 		runInAction(() => {
-			this.error = undefined;
 			this.status = "connecting";
 		});
 		this.log("request", "login");
@@ -68,7 +66,6 @@ export class V4LinkStore {
 					(msg) =>
 						runInAction(() => {
 							this.status = "error";
-							this.error = msg;
 							this.log("error", "fetchWallet", msg ?? "error");
 						}),
 				);
@@ -76,7 +73,6 @@ export class V4LinkStore {
 			(msg) =>
 				runInAction(() => {
 					this.status = "error";
-					this.error = msg;
 					this.log("error", "login", msg ?? "error");
 				}),
 			4,
@@ -132,7 +128,7 @@ export class V4LinkStore {
 		);
 	}
 
-	transferSoul(to: string, amount: string, token: string, format: "script" | "carbon") {
+	sendTokens(to: string, amount: string, token: string, format: "script" | "carbon") {
 		try {
 			const meta = TOKENS[token];
 			const atoms = parseAmountToAtoms(amount, meta?.decimals ?? 8);
@@ -167,7 +163,6 @@ export class V4LinkStore {
 		}
 		runInAction(() => {
 			this.busyOp = label;
-			this.error = undefined;
 		});
 		this.log("request", label);
 		return new Promise<void>((resolve) => {
@@ -181,7 +176,6 @@ export class V4LinkStore {
 				(msg) =>
 					runInAction(() => {
 						this.busyOp = undefined;
-						this.error = msg;
 						this.log("error", label, msg ?? "error");
 						resolve();
 					}),
@@ -192,11 +186,4 @@ export class V4LinkStore {
 	dispose(): void {
 		this.link = undefined;
 	}
-}
-
-function errMsg(e: unknown): string {
-	if (e && typeof e === "object" && "message" in e) {
-		return String((e as { message: unknown }).message);
-	}
-	return String(e);
 }
