@@ -19,6 +19,8 @@ export interface NetworkPreset {
 export const NETWORKS: NetworkPreset[] = [
 	{ id: "localnet", label: "Localnet", nexus: "simnet", rpc: "http://localhost:5172/rpc" },
 	{ id: "testnet", label: "Testnet", nexus: "testnet", rpc: "https://testnet.phantasma.info/rpc" },
+	// Devnet is a separate chain (its own RPC) that runs under the "testnet" nexus name, not "devnet".
+	{ id: "devnet", label: "Devnet", nexus: "testnet", rpc: "https://devnet.phantasma.info/rpc" },
 	{ id: "mainnet", label: "Mainnet", nexus: "mainnet", rpc: "https://pharpc1.phantasma.info/rpc" },
 ];
 

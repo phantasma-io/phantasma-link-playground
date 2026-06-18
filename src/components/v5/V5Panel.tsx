@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { observer, usePhantasmaLink, ConnectWidget, TxFormat, errMsg } from "phantasma-link-react";
 import { PanelShell, type PanelStatusTone } from "@/components/panel/PanelShell";
 import { OperationRunner } from "@/components/panel/OperationRunner";
@@ -21,7 +21,29 @@ function toneOf(status: string): PanelStatusTone {
 
 export const V5Panel = observer(function V5Panel() {
 	const link = usePhantasmaLink();
-	const [nexus, setNexus] = useState(DEFAULT_NETWORK.nexus);
+	// Select by network id, not by nexus: devnet and testnet share the "testnet" nexus, so a
+	// nexus-keyed selector cannot tell them apart.
+	const [networkId, setNetworkId] = useState(DEFAULT_NETWORK.id);
+	const network = NETWORKS.find((n) => n.id === networkId) ?? DEFAULT_NETWORK;
+
+	// Enforce the network at connect time. The wallet signs on ITS OWN nexus, so a wallet on a
+	// different nexus than the one selected here must NOT stay connected: once the session is up we
+	// read the wallet's nexus and, on a mismatch, disconnect immediately - there is no usable
+	// session on the wrong network. (Devnet and Testnet share the "testnet" nexus, so this cannot
+	// tell those two apart - only the wallet-side check / RPC can.)
+	useEffect(() => {
+		if (!link.connected) return;
+		void link.getChains().then((r) => {
+			if (r?.nexus && r.nexus !== network.nexus) {
+				link.log(
+					"error",
+					"connect",
+					`refused: wallet nexus "${r.nexus}" != selected network "${network.nexus}". Switch the wallet (Settings > Nexus) and reconnect.`,
+				);
+				void link.disconnect();
+			}
+		});
+	}, [link, link.connected, network.nexus]);
 
 	const balances: AccountBalance[] | undefined = link.account?.balances?.map((b) => ({
 		symbol: b.symbol,
@@ -36,7 +58,7 @@ export const V5Panel = observer(function V5Panel() {
 			const tx =
 				format === "carbon"
 					? buildCarbonTransferTxBase64(link.address, to, atoms, meta?.carbonTokenId ?? 0n)
-					: buildTransferTxBase64(meta?.symbol ?? token, link.address, to, atoms, nexus);
+					: buildTransferTxBase64(meta?.symbol ?? token, link.address, to, atoms, network.nexus);
 			void link.sendTransaction({ format: format === "carbon" ? TxFormat.Carbon : TxFormat.Script, tx });
 		} catch (e) {
 			link.log("error", "sendTransaction", errMsg(e));
@@ -71,9 +93,14 @@ export const V5Panel = observer(function V5Panel() {
 						</label>
 						<label className="text-xs">
 							<span className="mb-1 block text-muted-foreground">Network (tx nexus)</span>
-							<select className={selectClass} value={nexus} onChange={(e) => setNexus(e.target.value)}>
+							<select
+								className={selectClass}
+								value={networkId}
+								disabled={link.connected}
+								onChange={(e) => setNetworkId(e.target.value)}
+							>
 								{NETWORKS.map((n) => (
-									<option key={n.id} value={n.nexus}>
+									<option key={n.id} value={n.id}>
 										{n.label}
 									</option>
 								))}
