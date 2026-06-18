@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { observer, usePhantasmaLink, ConnectWidget, TxFormat, errMsg } from "@phantasma/link-react";
+import { observer, usePhantasmaLink, ConnectWidget, TxFormat, errMsg } from "phantasma-link-react";
 import { PanelShell, type PanelStatusTone } from "@/components/panel/PanelShell";
 import { OperationRunner } from "@/components/panel/OperationRunner";
 import { EventLog } from "@/components/panel/EventLog";

@@ -1,7 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { observer } from "@phantasma/link-react";
+import { observer } from "phantasma-link-react";
 import { cn } from "@/lib/utils";
 
 export type PanelLogKind = "info" | "request" | "result" | "event" | "error";

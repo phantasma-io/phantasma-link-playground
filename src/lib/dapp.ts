@@ -1,4 +1,4 @@
-import type { DappMetadata } from "@phantasma/link-react";
+import type { DappMetadata } from "phantasma-link-react";
 
 /** dApp identity the wallet shows at consent time and binds to the session. */
 export const DAPP_METADATA: DappMetadata = {

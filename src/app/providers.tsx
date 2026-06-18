@@ -1,7 +1,7 @@
 "use client";
 
 import { ThemeProvider } from "next-themes";
-import { PhantasmaLinkProvider } from "@phantasma/link-react";
+import { PhantasmaLinkProvider } from "phantasma-link-react";
 import { Toaster } from "@/components/ui/sonner";
 import { DAPP_METADATA } from "@/lib/dapp";
 

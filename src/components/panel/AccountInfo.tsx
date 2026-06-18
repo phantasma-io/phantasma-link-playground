@@ -1,7 +1,7 @@
 "use client";
 
 import { Copy } from "lucide-react";
-import { clip_copy, type WalletInfo } from "@phantasma/link-react";
+import { clip_copy, type WalletInfo } from "phantasma-link-react";
 
 export interface AccountBalance {
 	symbol: string;

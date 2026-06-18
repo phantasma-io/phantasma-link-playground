@@ -13,7 +13,7 @@ import {
 	TxTypes,
 	CarbonBlob,
 } from "phantasma-sdk-ts/public";
-import { bytesToBase64 } from "@phantasma/link-react";
+import { bytesToBase64 } from "phantasma-link-react";
 
 const GAS_PRICE = 100000n;
 const GAS_LIMIT = 21000n;

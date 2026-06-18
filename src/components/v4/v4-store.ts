@@ -1,7 +1,7 @@
 // A small MobX store that wraps the legacy callback-based `PhantasmaLink` (v1-v4) behind the
 // same surface the v5 store exposes, so both panels drive the identical OperationRunner/EventLog.
 
-import { makeAutoObservable, runInAction, errMsg } from "@phantasma/link-react";
+import { makeAutoObservable, runInAction, errMsg } from "phantasma-link-react";
 import { PhantasmaLink, ProofOfWork, verifyData } from "phantasma-sdk-ts/public";
 import type { PanelLogEntry, PanelLogKind } from "@/components/panel/EventLog";
 import { buildTransferScript, buildCarbonTransferMsg, parseAmountToAtoms, utf8ToHex, TOKENS } from "@/lib/tx";
