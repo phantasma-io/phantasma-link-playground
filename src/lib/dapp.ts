@@ -3,7 +3,8 @@ import type { DappMetadata } from "phantasma-link-react";
 /** dApp identity the wallet shows at consent time and binds to the session. */
 export const DAPP_METADATA: DappMetadata = {
 	name: "Phantasma Link Playground",
-	url: "https://link-playground.phantasma.info",
+	// Override per deployment via NEXT_PUBLIC_DAPP_URL.
+	url: process.env.NEXT_PUBLIC_DAPP_URL ?? "https://link-test.phantasma.info",
 	description: "Side-by-side tester for Phantasma Link v5 and v4.",
 };
 
@@ -24,4 +25,6 @@ export const NETWORKS: NetworkPreset[] = [
 	{ id: "mainnet", label: "Mainnet", nexus: "mainnet", rpc: "https://pharpc1.phantasma.info/rpc" },
 ];
 
-export const DEFAULT_NETWORK = NETWORKS[0];
+// Default network from NEXT_PUBLIC_DEFAULT_NETWORK; falls back to the first preset (localnet) for local dev.
+export const DEFAULT_NETWORK =
+	NETWORKS.find((n) => n.id === process.env.NEXT_PUBLIC_DEFAULT_NETWORK) ?? NETWORKS[0];
