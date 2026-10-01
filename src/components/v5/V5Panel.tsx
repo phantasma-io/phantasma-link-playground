@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { observer, usePhantasmaLink, ConnectWidget, TxFormat, errMsg } from "phantasma-link-react";
+import {
+	observer,
+	usePhantasmaLink,
+	ConnectWidget,
+	TxFormat,
+	errMsg,
+	type LinkTransportKind,
+} from "phantasma-link-react";
+import { findInjectedProvider } from "phantasma-sdk-ts/link/v5";
 import { PanelShell, type PanelStatusTone } from "@/components/panel/PanelShell";
 import { OperationRunner } from "@/components/panel/OperationRunner";
 import { EventLog } from "@/components/panel/EventLog";
@@ -25,6 +33,13 @@ export const V5Panel = observer(function V5Panel() {
 	// nexus-keyed selector cannot tell them apart.
 	const [networkId, setNetworkId] = useState(DEFAULT_NETWORK.id);
 	const network = NETWORKS.find((n) => n.id === networkId) ?? DEFAULT_NETWORK;
+	// The extension defines `window.phantasmaLink` before the page's scripts run (spec
+	// section 6.1). Read it after mount so the server-rendered markup and the first client
+	// render agree; the option is offered only when a wallet extension is present.
+	const [extensionPresent, setExtensionPresent] = useState(false);
+	useEffect(() => {
+		setExtensionPresent(findInjectedProvider() !== undefined);
+	}, []);
 
 	// Enforce the network at connect time. The wallet signs on ITS OWN nexus, so a wallet on a
 	// different nexus than the one selected here must NOT stay connected: once the session is up we
@@ -69,7 +84,7 @@ export const V5Panel = observer(function V5Panel() {
 		<PanelShell
 			version="v5"
 			title="Phantasma Link v5"
-			subtitle="Capability handshake, encrypted transports, QR / deeplink pairing"
+			subtitle="Capability handshake; extension, loopback, deeplink and relay transports"
 			statusLabel={link.status}
 			statusTone={toneOf(link.status)}
 			headerRight={<ConnectWidget />}
@@ -82,10 +97,11 @@ export const V5Panel = observer(function V5Panel() {
 							<select
 								className={selectClass}
 								value={link.transport}
-								onChange={(e) =>
-									void link.setTransport(e.target.value as "loopback" | "deeplink" | "relay")
-								}
+								onChange={(e) => void link.setTransport(e.target.value as LinkTransportKind)}
 							>
+								<option value="injected" disabled={!extensionPresent}>
+									{extensionPresent ? "Extension (browser wallet)" : "Extension (no wallet extension detected)"}
+								</option>
 								<option value="loopback">Loopback (desktop socket)</option>
 								<option value="relay">Relay (cross-device QR)</option>
 								<option value="deeplink">Deeplink (same device)</option>
