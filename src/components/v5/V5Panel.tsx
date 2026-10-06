@@ -57,12 +57,16 @@ export const V5Panel = observer(function V5Panel() {
 		if (!link.connected) return;
 		void link.getChains().then((r) => {
 			if (r?.nexus && r.nexus !== network.nexus) {
-				link.log(
-					"error",
-					"connect",
-					`refused: wallet nexus "${r.nexus}" != selected network "${network.nexus}". Switch the wallet (Settings > Nexus) and reconnect.`,
-				);
-				void link.disconnect();
+				const wallet = r.nexus;
+				// Logged after the disconnect: the store rebuilds its client then and logs
+				// "Client ready", which would bury a refusal logged first and read like a hang.
+				void link.disconnect().then(() => {
+					link.log(
+						"error",
+						"connect",
+						`refused: wallet nexus "${wallet}" != selected network "${network.nexus}". Switch the wallet (Settings > Nexus) and reconnect.`,
+					);
+				});
 			}
 		});
 	}, [link, link.connected, network.nexus]);
