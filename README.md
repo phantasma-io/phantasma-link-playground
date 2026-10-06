@@ -12,8 +12,8 @@ new **v5** protocol (top) against the legacy **v4** (bottom):
   socket / injected wallet.
 
 Each panel has a connect control, an account view, the shared operation runner (get chains, sign
-message, send SOUL; v5 can also sign the transfer without sending it), and a live event/request
-log.
+message, send SOUL; v5 can also sign the transfer without sending it and run a read-only script
+through the wallet's node), and a live event/request log.
 
 ## Run
 

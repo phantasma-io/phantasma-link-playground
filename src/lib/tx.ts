@@ -12,8 +12,11 @@ import {
 	TxMsgTransferFungible,
 	TxTypes,
 	CarbonBlob,
+	bytesToHex,
+	decodeVMObject,
+	hexToBytes,
 } from "phantasma-sdk-ts/public";
-import { bytesToBase64 } from "phantasma-link-react";
+import { base64ToBytes, bytesToBase64 } from "phantasma-link-react";
 
 const GAS_PRICE = 100000n;
 const GAS_LIMIT = 21000n;
@@ -107,6 +110,22 @@ export function buildCarbonTransferTxBase64(
 	tokenId: bigint,
 ): string {
 	return bytesToBase64(CarbonBlob.serialize(buildCarbonTransferMsg(from, to, amountAtoms, tokenId)));
+}
+
+/** A read-only VM script (base64) for v5 invokeScript: the token's decimals as the chain reports
+ * them. It needs no keys and no approval, so it checks the wallet's node and the result encoding. */
+export function buildTokenDecimalsScriptBase64(symbol: string): string {
+	const script = new ScriptBuilder()
+		.beginScript()
+		.callInterop("Runtime.GetTokenDecimals", [symbol])
+		.endScript();
+	return bytesToBase64(hexToBytes(script));
+}
+
+/** Decode one v5 invokeScript result: a VM object as the chain serializes it, in base64 (spec
+ * 9.5). Throws when the value is not in that encoding. */
+export function decodeInvokeResult(result: string): unknown {
+	return decodeVMObject(bytesToHex(base64ToBytes(result)));
 }
 
 /** UTF-8 -> hex (for the v4 signData path, which takes hex). */

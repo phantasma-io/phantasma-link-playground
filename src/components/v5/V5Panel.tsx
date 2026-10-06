@@ -14,7 +14,14 @@ import { PanelShell, type PanelStatusTone } from "@/components/panel/PanelShell"
 import { OperationRunner } from "@/components/panel/OperationRunner";
 import { EventLog } from "@/components/panel/EventLog";
 import { AccountInfo, type AccountBalance } from "@/components/panel/AccountInfo";
-import { buildTransferTxBase64, buildCarbonTransferTxBase64, parseAmountToAtoms, TOKENS } from "@/lib/tx";
+import {
+	buildTransferTxBase64,
+	buildCarbonTransferTxBase64,
+	buildTokenDecimalsScriptBase64,
+	decodeInvokeResult,
+	parseAmountToAtoms,
+	TOKENS,
+} from "@/lib/tx";
 import { NETWORKS, DEFAULT_NETWORK } from "@/lib/dapp";
 
 const selectClass =
@@ -94,6 +101,19 @@ export const V5Panel = observer(function V5Panel() {
 		}
 	};
 
+	// Reads the SOUL decimals through the wallet's node. The result is a base64 VM object (spec
+	// 9.5); a wallet that answers in another encoding shows up here as a decode error.
+	const invokeScript = async () => {
+		const result = await link.invokeScript({ chain: "main", script: buildTokenDecimalsScriptBase64("SOUL") });
+		const first = result?.results[0];
+		if (first === undefined) return;
+		try {
+			link.log("info", "invokeScript", `SOUL decimals: ${String(decodeInvokeResult(first))}`);
+		} catch (e) {
+			link.log("error", "invokeScript", `result is not a base64 VM object: ${errMsg(e)}`);
+		}
+	};
+
 	return (
 		<PanelShell
 			version="v5"
@@ -143,6 +163,7 @@ export const V5Panel = observer(function V5Panel() {
 						busyOp={link.busyOp}
 						onGetChains={() => void link.getChains()}
 						onGetWalletInfo={() => void link.getWalletInfo()}
+						onInvokeScript={() => void invokeScript()}
 						onSignMessage={(m) => void link.signMessage(m)}
 						onSendTokens={sendTokens}
 						onSignTokens={signTokens}

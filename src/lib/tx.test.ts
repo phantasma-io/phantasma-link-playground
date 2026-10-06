@@ -3,7 +3,15 @@
 // random-prefixed signature verification convention the V4LinkStore relies on.
 
 import { describe, it, expect } from "vitest";
-import { parseAmountToAtoms, TOKENS, utf8ToHex, buildCarbonTransferMsg } from "./tx";
+import {
+	parseAmountToAtoms,
+	TOKENS,
+	utf8ToHex,
+	buildCarbonTransferMsg,
+	buildTokenDecimalsScriptBase64,
+	decodeInvokeResult,
+} from "./tx";
+import { base64ToBytes } from "phantasma-link-react";
 import {
 	generateNewWif,
 	getPrivateKeyFromWif,
@@ -53,6 +61,25 @@ describe("buildCarbonTransferMsg expiry", () => {
 		const expiry = Number(msg.expiry);
 		expect(expiry).toBeGreaterThan(before);
 		expect(expiry).toBeGreaterThan(1_000_000_000_000);
+	});
+});
+
+describe("invokeScript helpers", () => {
+	// Spec 9.5: each result is one VM object as the chain serializes it, in base64. 0x03 is the
+	// Number type, then a length byte and the value: 8, the SOUL decimals.
+	it("decodes a base64 VM result", () => {
+		expect(decodeInvokeResult("AwEI")).toBe("8");
+	});
+
+	// The hex answer of wallets that predate spec 1.2 ("03020800" from the node) must not pass.
+	it("refuses a hex result", () => {
+		expect(() => decodeInvokeResult("03020800")).toThrow();
+	});
+
+	it("builds the decimals script as base64", () => {
+		const script = new TextDecoder().decode(base64ToBytes(buildTokenDecimalsScriptBase64("SOUL")));
+		expect(script).toContain("Runtime.GetTokenDecimals");
+		expect(script).toContain("SOUL");
 	});
 });
 

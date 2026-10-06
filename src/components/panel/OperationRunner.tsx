@@ -14,6 +14,8 @@ export interface OperationRunnerProps {
 	busyOp?: string;
 	onGetChains: () => void;
 	onGetWalletInfo?: () => void;
+	/** Runs a read-only script through the wallet's node; the button shows only when given. */
+	onInvokeScript?: () => void;
 	onSignMessage: (message: string) => void;
 	onSendTokens: (to: string, amount: string, token: string, format: "script" | "carbon") => void;
 	/** Signs the same transfer without broadcasting it; the button shows only when given. */
@@ -25,6 +27,7 @@ export function OperationRunner({
 	busyOp,
 	onGetChains,
 	onGetWalletInfo,
+	onInvokeScript,
 	onSignMessage,
 	onSendTokens,
 	onSignTokens,
@@ -47,6 +50,11 @@ export function OperationRunner({
 				{onGetWalletInfo ? (
 					<Button size="sm" variant="secondary" disabled={disabled || anyBusy} onClick={onGetWalletInfo}>
 						{busy("getWalletInfo") ? "..." : "Get wallet info"}
+					</Button>
+				) : null}
+				{onInvokeScript ? (
+					<Button size="sm" variant="secondary" disabled={disabled || anyBusy} onClick={onInvokeScript}>
+						{busy("invokeScript") ? "..." : "Invoke script"}
 					</Button>
 				) : null}
 			</div>
