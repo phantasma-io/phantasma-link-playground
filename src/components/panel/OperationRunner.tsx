@@ -16,6 +16,8 @@ export interface OperationRunnerProps {
 	onGetWalletInfo?: () => void;
 	onSignMessage: (message: string) => void;
 	onSendTokens: (to: string, amount: string, token: string, format: "script" | "carbon") => void;
+	/** Signs the same transfer without broadcasting it; the button shows only when given. */
+	onSignTokens?: (to: string, amount: string, token: string, format: "script" | "carbon") => void;
 }
 
 export function OperationRunner({
@@ -25,6 +27,7 @@ export function OperationRunner({
 	onGetWalletInfo,
 	onSignMessage,
 	onSendTokens,
+	onSignTokens,
 }: OperationRunnerProps) {
 	const [message, setMessage] = useState("Hello from the Phantasma Link Playground");
 	const [recipient, setRecipient] = useState("");
@@ -105,6 +108,16 @@ export function OperationRunner({
 					>
 						{busy("sendTransaction", "signTx", "signCarbonTx") ? "Sending..." : `Send ${token}`}
 					</Button>
+					{onSignTokens ? (
+						<Button
+							size="sm"
+							variant="secondary"
+							disabled={disabled || anyBusy || !recipient.trim() || !amount.trim()}
+							onClick={() => onSignTokens(recipient, amount, token, format)}
+						>
+							{busy("signTransaction") ? "Signing..." : "Sign only"}
+						</Button>
+					) : null}
 				</div>
 			</div>
 		</div>

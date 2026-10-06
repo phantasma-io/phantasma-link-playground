@@ -65,18 +65,32 @@ export const V5Panel = observer(function V5Panel() {
 		amount: b.value,
 	}));
 
+	const buildTransfer = (from: string, to: string, amount: string, token: string, format: "script" | "carbon") => {
+		const meta = TOKENS[token];
+		const atoms = parseAmountToAtoms(amount, meta?.decimals ?? 8);
+		const tx =
+			format === "carbon"
+				? buildCarbonTransferTxBase64(from, to, atoms, meta?.carbonTokenId ?? 0n)
+				: buildTransferTxBase64(meta?.symbol ?? token, from, to, atoms, network.nexus);
+		return { format: format === "carbon" ? TxFormat.Carbon : TxFormat.Script, tx };
+	};
+
 	const sendTokens = (to: string, amount: string, token: string, format: "script" | "carbon") => {
 		if (!link.address) return;
 		try {
-			const meta = TOKENS[token];
-			const atoms = parseAmountToAtoms(amount, meta?.decimals ?? 8);
-			const tx =
-				format === "carbon"
-					? buildCarbonTransferTxBase64(link.address, to, atoms, meta?.carbonTokenId ?? 0n)
-					: buildTransferTxBase64(meta?.symbol ?? token, link.address, to, atoms, network.nexus);
-			void link.sendTransaction({ format: format === "carbon" ? TxFormat.Carbon : TxFormat.Script, tx });
+			void link.sendTransaction(buildTransfer(link.address, to, amount, token, format));
 		} catch (e) {
 			link.log("error", "sendTransaction", errMsg(e));
+		}
+	};
+
+	// The wallet signs the transfer exactly as built here and returns it unsent (spec 9.5).
+	const signTokens = (to: string, amount: string, token: string, format: "script" | "carbon") => {
+		if (!link.address) return;
+		try {
+			void link.signTransaction(buildTransfer(link.address, to, amount, token, format));
+		} catch (e) {
+			link.log("error", "signTransaction", errMsg(e));
 		}
 	};
 
@@ -131,6 +145,7 @@ export const V5Panel = observer(function V5Panel() {
 						onGetWalletInfo={() => void link.getWalletInfo()}
 						onSignMessage={(m) => void link.signMessage(m)}
 						onSendTokens={sendTokens}
+						onSignTokens={signTokens}
 					/>
 				</div>
 				<EventLog logs={link.logs} onClear={() => link.clearLogs()} />
