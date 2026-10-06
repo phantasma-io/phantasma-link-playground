@@ -2,9 +2,10 @@
 // same surface the v5 store exposes, so both panels drive the identical OperationRunner/EventLog.
 
 import { makeAutoObservable, runInAction, errMsg } from "phantasma-link-react";
-import { PhantasmaLink, ProofOfWork, verifyData } from "phantasma-sdk-ts/public";
+import { PhantasmaAPI, PhantasmaLink, ProofOfWork, verifyData } from "phantasma-sdk-ts/public";
 import type { PanelLogEntry, PanelLogKind } from "@/components/panel/EventLog";
-import { buildTransferScript, buildCarbonTransferMsg, parseAmountToAtoms, utf8ToHex, TOKENS } from "@/lib/tx";
+import { networkForNexus } from "@/lib/dapp";
+import { buildTransferScript, planCarbonTransferMsg, parseAmountToAtoms, utf8ToHex, TOKENS } from "@/lib/tx";
 
 type V4Status = "idle" | "connecting" | "connected" | "error";
 type LinkResponse = Record<string, unknown> & { hash?: unknown; signature?: unknown };
@@ -133,11 +134,21 @@ export class V4LinkStore {
 			const meta = TOKENS[token];
 			const atoms = parseAmountToAtoms(amount, meta?.decimals ?? 8);
 			if (format === "carbon") {
-				const txMsg = buildCarbonTransferMsg(this.address!, to, atoms, meta?.carbonTokenId ?? 0n);
-				return this.runCallback(
-					"signCarbonTx",
-					(cb, errcb) => this.link!.signCarbonTxAndBroadcast(txMsg, cb, errcb),
-					(r) => `hash ${String(r.hash ?? "")}`,
+				// The fees are planned against the chain the wallet reported; the wallet signs the
+				// message as built.
+				const network = networkForNexus(this.nexus);
+				if (network === undefined) {
+					throw new Error(`no RPC known for the wallet's nexus "${this.nexus ?? "?"}" to plan the fees`);
+				}
+				const fees = new PhantasmaAPI(network.rpc, null, network.nexus).fees;
+				return planCarbonTransferMsg(fees, this.address!, to, atoms, meta?.carbonTokenId ?? 0n).then(
+					(txMsg) =>
+						this.runCallback(
+							"signCarbonTx",
+							(cb, errcb) => this.link!.signCarbonTxAndBroadcast(txMsg, cb, errcb),
+							(r) => `hash ${String(r.hash ?? "")}`,
+						),
+					(e: unknown) => this.log("error", "signCarbonTx", errMsg(e)),
 				);
 			}
 			const script = buildTransferScript(meta?.symbol ?? token, this.address!, to, atoms);

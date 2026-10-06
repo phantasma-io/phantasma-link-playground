@@ -9,10 +9,17 @@ import {
 	utf8ToHex,
 	buildCarbonTransferMsg,
 	buildTokenDecimalsScriptBase64,
+	buildPlannedCarbonTransferTxBase64,
 	decodeInvokeResult,
+	planCarbonTransferMsg,
 } from "./tx";
+import { networkForNexus } from "./dapp";
 import { base64ToBytes } from "phantasma-link-react";
 import {
+	CarbonBlob,
+	FeePlanner,
+	TxMsg,
+	type GasConfigResult,
 	generateNewWif,
 	getPrivateKeyFromWif,
 	getAddressFromWif,
@@ -61,6 +68,72 @@ describe("buildCarbonTransferMsg expiry", () => {
 		const expiry = Number(msg.expiry);
 		expect(expiry).toBeGreaterThan(before);
 		expect(expiry).toBeGreaterThan(1_000_000_000_000);
+	});
+});
+
+// getGasConfig of the local node (gas model v2), read 2026-10-06.
+const LOCALNET_GAS_CONFIG = {
+	gasModelVersion: 2,
+	gasConfig: {
+		version: 1,
+		maxNameLength: 255,
+		maxTokenSymbolLength: 255,
+		feeShift: 0,
+		maxStructureSize: 1048576,
+		feeMultiplier: "10000",
+		gasTokenId: "1",
+		dataTokenId: "2",
+		minimumGasOffer: "10",
+		dataEscrowPerRow: "200000",
+		gasFeeTransfer: "10",
+		gasFeeQuery: "10",
+		gasFeeCreateTokenBase: "10000000000",
+		gasFeeCreateTokenSymbol: "10000000000",
+		gasFeeCreateTokenSeries: "2500000000",
+		gasFeePerByte: "250000",
+		gasFeeRegisterName: "10000000000000",
+		gasBurnRatioMul: "1",
+		gasBurnRatioShift: 0,
+		minimumGasBill: "10000000",
+		gasProducerRatioMul: "0",
+		gasProducerRatioShift: 0,
+		gasDappRatioMul: "0",
+		gasDappRatioShift: 0,
+		policyFeeCreateTokenBase: "100000000000000",
+		policyFeeCreateTokenSymbol: "100000000000000",
+		policyFeeCreateTokenSeries: "25000000000000",
+		policyFeeRegisterName: "100000000000000000",
+		legacyDataEscrowPerRow: "2",
+	},
+	blockRateTarget: 1000,
+	expiryWindow: 3600000,
+	unitsPerBlockDataByte: 25,
+} as unknown as GasConfigResult;
+
+describe("planned Carbon transfers", () => {
+	// Regression guard for "below minimum gas bill": gas model v2 bills the whole envelope per
+	// byte, so the offer comes from the network's config, not from a constant.
+	it("offers the gas the network's config asks for", async () => {
+		const fees = new FeePlanner({ getGasConfig: async () => LOCALNET_GAS_CONFIG });
+		const from = getAddressFromWif(generateNewWif());
+		const to = getAddressFromWif(generateNewWif());
+		const planned = await planCarbonTransferMsg(fees, from, to, 1000n, TOKENS.SOUL.carbonTokenId);
+		expect(planned.maxGas).toBeGreaterThanOrEqual(10_000_000n);
+		expect(planned.maxGas).toBe((await fees.plan(buildCarbonTransferMsg(from, to, 1000n, 2n))).maxGas);
+
+		// v5 sends the same planned message, serialized.
+		const tx = await buildPlannedCarbonTransferTxBase64(fees, from, to, 1000n, TOKENS.SOUL.carbonTokenId);
+		const msg = CarbonBlob.fromBytesChecked(TxMsg, base64ToBytes(tx), false, 0);
+		expect(msg.maxGas).toBe(planned.maxGas);
+	});
+
+	// The v4 panel plans against the chain its wallet reports, picked by the nexus name.
+	it("finds the network for the nexus a wallet reports", () => {
+		expect(networkForNexus("simnet")?.rpc).toBe("http://localhost:5172/rpc");
+		expect(networkForNexus("mainnet")?.id).toBe("mainnet");
+		expect(networkForNexus("testnet")?.id).toBe("testnet");
+		expect(networkForNexus("unknown")).toBeUndefined();
+		expect(networkForNexus(undefined)).toBeUndefined();
 	});
 });
 

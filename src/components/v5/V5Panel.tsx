@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
 	observer,
 	usePhantasmaLink,
@@ -10,13 +10,14 @@ import {
 	type LinkTransportKind,
 } from "phantasma-link-react";
 import { findInjectedProvider } from "phantasma-sdk-ts/link/v5";
+import { PhantasmaAPI } from "phantasma-sdk-ts/public";
 import { PanelShell, type PanelStatusTone } from "@/components/panel/PanelShell";
 import { OperationRunner } from "@/components/panel/OperationRunner";
 import { EventLog } from "@/components/panel/EventLog";
 import { AccountInfo, type AccountBalance } from "@/components/panel/AccountInfo";
 import {
 	buildTransferTxBase64,
-	buildCarbonTransferTxBase64,
+	buildPlannedCarbonTransferTxBase64,
 	buildTokenDecimalsScriptBase64,
 	decodeInvokeResult,
 	parseAmountToAtoms,
@@ -40,6 +41,8 @@ export const V5Panel = observer(function V5Panel() {
 	// nexus-keyed selector cannot tell them apart.
 	const [networkId, setNetworkId] = useState(DEFAULT_NETWORK.id);
 	const network = NETWORKS.find((n) => n.id === networkId) ?? DEFAULT_NETWORK;
+	// Carbon fees are planned against the selected network's gas config (read over its RPC).
+	const fees = useMemo(() => new PhantasmaAPI(network.rpc, null, network.nexus).fees, [network.rpc, network.nexus]);
 	// The extension defines `window.phantasmaLink` before the page's scripts run (spec
 	// section 6.1). Read it after mount so the server-rendered markup and the first client
 	// render agree; the option is offered only when a wallet extension is present.
@@ -76,33 +79,31 @@ export const V5Panel = observer(function V5Panel() {
 		amount: b.value,
 	}));
 
-	const buildTransfer = (from: string, to: string, amount: string, token: string, format: "script" | "carbon") => {
+	const buildTransfer = async (from: string, to: string, amount: string, token: string, format: "script" | "carbon") => {
 		const meta = TOKENS[token];
 		const atoms = parseAmountToAtoms(amount, meta?.decimals ?? 8);
 		const tx =
 			format === "carbon"
-				? buildCarbonTransferTxBase64(from, to, atoms, meta?.carbonTokenId ?? 0n)
+				? await buildPlannedCarbonTransferTxBase64(fees, from, to, atoms, meta?.carbonTokenId ?? 0n)
 				: buildTransferTxBase64(meta?.symbol ?? token, from, to, atoms, network.nexus);
 		return { format: format === "carbon" ? TxFormat.Carbon : TxFormat.Script, tx };
 	};
 
 	const sendTokens = (to: string, amount: string, token: string, format: "script" | "carbon") => {
 		if (!link.address) return;
-		try {
-			void link.sendTransaction(buildTransfer(link.address, to, amount, token, format));
-		} catch (e) {
-			link.log("error", "sendTransaction", errMsg(e));
-		}
+		void buildTransfer(link.address, to, amount, token, format).then(
+			(params) => link.sendTransaction(params),
+			(e: unknown) => link.log("error", "sendTransaction", errMsg(e)),
+		);
 	};
 
 	// The wallet signs the transfer exactly as built here and returns it unsent (spec 9.5).
 	const signTokens = (to: string, amount: string, token: string, format: "script" | "carbon") => {
 		if (!link.address) return;
-		try {
-			void link.signTransaction(buildTransfer(link.address, to, amount, token, format));
-		} catch (e) {
-			link.log("error", "signTransaction", errMsg(e));
-		}
+		void buildTransfer(link.address, to, amount, token, format).then(
+			(params) => link.signTransaction(params),
+			(e: unknown) => link.log("error", "signTransaction", errMsg(e)),
+		);
 	};
 
 	// Reads the SOUL decimals through the wallet's node. The result is a base64 VM object (spec

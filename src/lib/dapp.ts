@@ -25,6 +25,12 @@ export const NETWORKS: NetworkPreset[] = [
 	{ id: "mainnet", label: "Mainnet", nexus: "mainnet", rpc: "https://pharpc1.phantasma.info/rpc" },
 ];
 
+/** The preset for the nexus a wallet reports, for reading that chain over RPC. Testnet and devnet
+ * share the nexus name "testnet", so the first preset with it, testnet, serves both. */
+export function networkForNexus(nexus: string | undefined): NetworkPreset | undefined {
+	return NETWORKS.find((n) => n.nexus === nexus);
+}
+
 // Default network from NEXT_PUBLIC_DEFAULT_NETWORK; falls back to the first preset (localnet) for local dev.
 export const DEFAULT_NETWORK =
 	NETWORKS.find((n) => n.id === process.env.NEXT_PUBLIC_DEFAULT_NETWORK) ?? NETWORKS[0];

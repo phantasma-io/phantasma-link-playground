@@ -12,6 +12,7 @@ import {
 	TxMsgTransferFungible,
 	TxTypes,
 	CarbonBlob,
+	type FeePlanner,
 	bytesToHex,
 	decodeVMObject,
 	hexToBytes,
@@ -76,7 +77,8 @@ export function buildTransferTxBase64(
 
 /** Build a Carbon TxMsg for a fungible transfer. v4 signs the TxMsg object directly
  * (signCarbonTxAndBroadcast); v5 sends its serialized bytes. Carbon transfers by numeric token
- * id, not symbol, so `tokenId` must be the on-chain id of the token being sent.
+ * id, not symbol, so `tokenId` must be the on-chain id of the token being sent. Its `maxGas` is a
+ * placeholder: both panels send the message planned by {@link planCarbonTransferMsg}.
  *
  * The Carbon `expiry` is a unix timestamp in MILLISECONDS (the chain compares it against its own
  * millisecond clock; a seconds value is read as the far past and rejected as "Transaction has
@@ -102,14 +104,32 @@ export function buildCarbonTransferMsg(
 	);
 }
 
-/** The serialized Carbon TxMsg (base64) for v5 sendTransaction({ format: "carbon" }). */
-export function buildCarbonTransferTxBase64(
+/** A Carbon fungible transfer with `maxGas` and `maxData` planned against the network's current
+ * gas config. Gas model v2 bills the whole signed envelope per byte, so a fixed offer is refused
+ * below the minimum bill, and wallets sign the transaction exactly as built (Link spec 1.2, 9.5;
+ * PoltergeistLite does the same for v4): planning is the dApp's job. */
+export async function planCarbonTransferMsg(
+	fees: FeePlanner,
 	from: string,
 	to: string,
 	amountAtoms: bigint,
 	tokenId: bigint,
-): string {
-	return bytesToBase64(CarbonBlob.serialize(buildCarbonTransferMsg(from, to, amountAtoms, tokenId)));
+): Promise<TxMsg> {
+	const msg = buildCarbonTransferMsg(from, to, amountAtoms, tokenId);
+	const plan = await fees.plan(msg);
+	return plan.apply(msg);
+}
+
+/** The planned Carbon transfer, serialized (base64), for v5 sendTransaction({ format: "carbon" }). */
+export async function buildPlannedCarbonTransferTxBase64(
+	fees: FeePlanner,
+	from: string,
+	to: string,
+	amountAtoms: bigint,
+	tokenId: bigint,
+): Promise<string> {
+	const msg = await planCarbonTransferMsg(fees, from, to, amountAtoms, tokenId);
+	return bytesToBase64(CarbonBlob.serialize(msg));
 }
 
 /** A read-only VM script (base64) for v5 invokeScript: the token's decimals as the chain reports
