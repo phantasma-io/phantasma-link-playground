@@ -8,8 +8,9 @@ new **v5** protocol (top) against the legacy **v4** (bottom):
   over `PhantasmaLink5`. Pick the transport (the browser-extension wallet, the desktop loopback
   socket, same-device deeplink, or cross-device QR over the relay), pair where the transport
   needs it, and run the typed `pha_*` methods.
-- **v4** &mdash; the legacy callback-based `PhantasmaLink` from `phantasma-sdk-ts`, over the local
-  socket / injected wallet.
+- **v4** &mdash; the legacy callback-based `PhantasmaLink` from `phantasma-sdk-ts`. Pick the wallet:
+  the extension (its injected socket, the default when one is detected) or the desktop wallet's
+  local socket (`localhost:7090`).
 
 Each panel has a connect control, an account view, the shared operation runner (get chains, sign
 message, send SOUL; v5 can also sign the transfer without sending it and run a read-only script

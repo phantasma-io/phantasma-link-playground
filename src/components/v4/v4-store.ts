@@ -5,6 +5,7 @@ import { makeAutoObservable, runInAction, errMsg } from "phantasma-link-react";
 import { PhantasmaAPI, PhantasmaLink, ProofOfWork, verifyData } from "phantasma-sdk-ts/public";
 import type { PanelLogEntry, PanelLogKind } from "@/components/panel/EventLog";
 import { networkForNexus } from "@/lib/dapp";
+import { providerHintFor, type V4Wallet } from "@/lib/v4-wallet";
 import { buildTransferScript, planCarbonTransferMsg, parseAmountToAtoms, utf8ToHex, TOKENS } from "@/lib/tx";
 
 type V4Status = "idle" | "connecting" | "connected" | "error";
@@ -17,6 +18,8 @@ export class V4LinkStore {
 	status: V4Status = "idle";
 	address?: string;
 	nexus?: string;
+	/** The wallet the next login reaches; the panel offers the extension when one is present. */
+	wallet: V4Wallet = "desktop";
 	busyOp?: string;
 	logs: PanelLogEntry[] = [];
 	private link?: PhantasmaLink;
@@ -40,11 +43,19 @@ export class V4LinkStore {
 		this.logs = [];
 	}
 
+	/** Changes the wallet while no session is open or opening. */
+	setWallet(wallet: V4Wallet): void {
+		if (this.status === "connected" || this.status === "connecting") {
+			return;
+		}
+		this.wallet = wallet;
+	}
+
 	connect(): void {
 		runInAction(() => {
 			this.status = "connecting";
 		});
-		this.log("request", "login");
+		this.log("request", "login", this.wallet === "extension" ? "extension" : "desktop, localhost:7090");
 		const link = new PhantasmaLink(this.dappId, false);
 		this.link = link;
 		link.login(
@@ -78,7 +89,7 @@ export class V4LinkStore {
 				}),
 			4,
 			"phantasma",
-			"poltergeist",
+			providerHintFor(this.wallet),
 		);
 	}
 
