@@ -22,6 +22,13 @@ import { base64ToBytes, bytesToBase64 } from "phantasma-link-react";
 const GAS_PRICE = 100000n;
 const GAS_LIMIT = 21000n;
 const CARBON_MAX_GAS = 100000n;
+/** Gas limit of one contract call. A small method such as a game move stays below it on the
+ * localnet. */
+const CALL_GAS_LIMIT = 100000n;
+
+/** The most gas one contract call can cost the account, in KCAL atoms: `price × limit` of its
+ * AllowGas. A signing permission reserves this amount against its gas budget (Link spec 1.2, 9.8). */
+export const CALL_GAS_COST = GAS_PRICE * CALL_GAS_LIMIT;
 
 /** A token the playground can send. `decimals` drives amount parsing (SOUL 8, KCAL 10);
  * `carbonTokenId` is the on-chain numeric id the Carbon format transfers by. */
@@ -72,6 +79,28 @@ export function buildTransferTxBase64(
 	const script = buildTransferScript(symbol, from, to, amountAtoms);
 	const expiry = new Date(Date.now() + 10 * 60 * 1000);
 	const tx = new Transaction(nexus, "main", script, expiry, "");
+	return bytesToBase64(tx.toByteArray(false));
+}
+
+/** A full unsigned v5 Transaction (base64) that calls one contract method in the standard form:
+ * AllowGas, the call, SpendGas. A wallet signs only this form without a prompt under a signing
+ * permission (Link spec 1.2, 9.8). The caller passes the expiry, because such a transaction must
+ * expire no later than the permission. */
+export function buildContractCallTxBase64(
+	contract: string,
+	method: string,
+	args: unknown[],
+	from: string,
+	nexus: string,
+	expiresAt: Date,
+): string {
+	const script = new ScriptBuilder()
+		.beginScript()
+		.allowGas(from, Address.nullAddress, GAS_PRICE, CALL_GAS_LIMIT)
+		.callContract(contract, method, args)
+		.spendGas(from)
+		.endScript();
+	const tx = new Transaction(nexus, "main", script, expiresAt, "");
 	return bytesToBase64(tx.toByteArray(false));
 }
 

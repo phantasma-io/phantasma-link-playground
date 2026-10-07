@@ -8,6 +8,7 @@ import {
 	TxFormat,
 	errMsg,
 	type LinkTransportKind,
+	type RequestSigningPermissionParams,
 } from "phantasma-link-react";
 import { findInjectedProvider } from "phantasma-sdk-ts/link/v5";
 import { PhantasmaAPI } from "phantasma-sdk-ts/public";
@@ -15,7 +16,9 @@ import { PanelShell, type PanelStatusTone } from "@/components/panel/PanelShell"
 import { OperationRunner } from "@/components/panel/OperationRunner";
 import { EventLog } from "@/components/panel/EventLog";
 import { AccountInfo, type AccountBalance } from "@/components/panel/AccountInfo";
+import { SigningPermissionRunner } from "@/components/v5/SigningPermissionRunner";
 import {
+	buildContractCallTxBase64,
 	buildTransferTxBase64,
 	buildPlannedCarbonTransferTxBase64,
 	buildTokenDecimalsScriptBase64,
@@ -23,6 +26,7 @@ import {
 	parseAmountToAtoms,
 	TOKENS,
 } from "@/lib/tx";
+import { buildPermissionRequest, callTxExpiry, parseCallArgs } from "@/lib/permission";
 import { NETWORKS, DEFAULT_NETWORK } from "@/lib/dapp";
 
 const selectClass =
@@ -51,12 +55,18 @@ export const V5Panel = observer(function V5Panel() {
 		setExtensionPresent(findInjectedProvider() !== undefined);
 	}, []);
 
+	// True when the wallet has reported the signing permission of this session, or that it has none
+	// (spec 9.8). The store keeps no permission across a page reload, so the panel tells "none" from
+	// "not known yet".
+	const [permissionKnown, setPermissionKnown] = useState(false);
+
 	// Enforce the network at connect time. The wallet signs on ITS OWN nexus, so a wallet on a
 	// different nexus than the one selected here must NOT stay connected: once the session is up we
 	// read the wallet's nexus and, on a mismatch, disconnect immediately - there is no usable
 	// session on the wrong network. (Devnet and Testnet share the "testnet" nexus, so this cannot
 	// tell those two apart - only the wallet-side check / RPC can.)
 	useEffect(() => {
+		setPermissionKnown(false);
 		if (!link.connected) return;
 		void link.getChains().then((r) => {
 			if (r?.nexus && r.nexus !== network.nexus) {
@@ -69,6 +79,15 @@ export const V5Panel = observer(function V5Panel() {
 						"connect",
 						`refused: wallet nexus "${wallet}" != selected network "${network.nexus}". Switch the wallet (Settings > Nexus) and reconnect.`,
 					);
+				});
+				return;
+			}
+			// The extension and the desktop wallet answer at once, so the panel reads the session's
+			// permission by itself. Over deeplink and relay the request would go to the phone and
+			// bring the wallet to the front, so there the user reads it with "Get permission".
+			if (link.transport === "injected" || link.transport === "loopback") {
+				void link.getSigningPermission().then((read) => {
+					if (read !== undefined) setPermissionKnown(true);
 				});
 			}
 		});
@@ -104,6 +123,51 @@ export const V5Panel = observer(function V5Panel() {
 			(params) => link.signTransaction(params),
 			(e: unknown) => link.log("error", "signTransaction", errMsg(e)),
 		);
+	};
+
+	const requestPermission = (contract: string, methods: string, minutes: string, budgetKcal: string) => {
+		let params: RequestSigningPermissionParams;
+		try {
+			params = buildPermissionRequest(contract, methods, minutes, budgetKcal);
+		} catch (e) {
+			link.log("error", "requestSigningPermission", errMsg(e));
+			return;
+		}
+		void link.requestSigningPermission(params).then((granted) => {
+			if (granted !== undefined) setPermissionKnown(true);
+		});
+	};
+
+	// A read or a revoke that the wallet answered tells the panel the state of the permission.
+	const getPermission = () => {
+		void link.getSigningPermission().then((read) => {
+			if (read !== undefined) setPermissionKnown(true);
+		});
+	};
+	const revokePermission = () => {
+		void link.revokeSigningPermission().then((revoked) => {
+			if (revoked !== undefined) setPermissionKnown(true);
+		});
+	};
+
+	const callContract = (contract: string, method: string, args: string) => {
+		if (!link.address) return;
+		const expiresAt = callTxExpiry(Date.now(), link.signingPermission?.expiresAt);
+		let tx: string;
+		try {
+			tx = buildContractCallTxBase64(
+				contract.trim(),
+				method.trim(),
+				parseCallArgs(args, link.address),
+				link.address,
+				network.nexus,
+				expiresAt,
+			);
+		} catch (e) {
+			link.log("error", "sendTransaction", errMsg(e));
+			return;
+		}
+		void link.sendTransaction({ format: TxFormat.Script, tx });
 	};
 
 	// Reads the SOUL decimals through the wallet's node. The result is a base64 VM object (spec
@@ -172,6 +236,16 @@ export const V5Panel = observer(function V5Panel() {
 						onSignMessage={(m) => void link.signMessage(m)}
 						onSendTokens={sendTokens}
 						onSignTokens={signTokens}
+					/>
+					<SigningPermissionRunner
+						disabled={!link.connected}
+						busyOp={link.busyOp}
+						permission={link.signingPermission}
+						permissionKnown={permissionKnown}
+						onRequest={requestPermission}
+						onGet={getPermission}
+						onRevoke={revokePermission}
+						onCall={callContract}
 					/>
 				</div>
 				<EventLog logs={link.logs} onClear={() => link.clearLogs()} />

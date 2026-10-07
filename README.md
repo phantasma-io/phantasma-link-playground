@@ -16,6 +16,12 @@ Each panel has a connect control, an account view, the shared operation runner (
 message, send SOUL; v5 can also sign the transfer without sending it and run a read-only script
 through the wallet's node), and a live event/request log.
 
+The v5 panel also shows the signing permission of spec section 9.8. Ask once for a permission on
+methods of a contract, with a duration and a gas budget, then send calls of those methods: the
+wallet signs a call that the permission covers without a prompt and asks for any other. The
+contract must exist on the selected network. After a connect over the extension or the desktop
+wallet the panel reads the permission by itself; over deeplink and relay "Get permission" reads it.
+
 ## Run
 
 ```sh
