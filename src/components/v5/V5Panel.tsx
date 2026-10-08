@@ -65,9 +65,14 @@ export const V5Panel = observer(function V5Panel() {
 	// read the wallet's nexus and, on a mismatch, disconnect immediately - there is no usable
 	// session on the wrong network. (Devnet and Testnet share the "testnet" nexus, so this cannot
 	// tell those two apart - only the wallet-side check / RPC can.)
+	// Only the extension and the desktop wallet answer such a request at once. Over deeplink and
+	// relay each request brings the wallet app to the front, which a page may do only from the
+	// user's tap, so there the user reads the network with "Get chains" and the permission with
+	// "Get permission".
 	useEffect(() => {
 		setPermissionKnown(false);
 		if (!link.connected) return;
+		if (link.transport !== "injected" && link.transport !== "loopback") return;
 		void link.getChains().then((r) => {
 			if (r?.nexus && r.nexus !== network.nexus) {
 				const wallet = r.nexus;
@@ -82,16 +87,11 @@ export const V5Panel = observer(function V5Panel() {
 				});
 				return;
 			}
-			// The extension and the desktop wallet answer at once, so the panel reads the session's
-			// permission by itself. Over deeplink and relay the request would go to the phone and
-			// bring the wallet to the front, so there the user reads it with "Get permission".
-			if (link.transport === "injected" || link.transport === "loopback") {
-				void link.getSigningPermission().then((read) => {
-					if (read !== undefined) setPermissionKnown(true);
-				});
-			}
+			void link.getSigningPermission().then((read) => {
+				if (read !== undefined) setPermissionKnown(true);
+			});
 		});
-	}, [link, link.connected, network.nexus]);
+	}, [link, link.connected, link.transport, network.nexus]);
 
 	const balances: AccountBalance[] | undefined = link.account?.balances?.map((b) => ({
 		symbol: b.symbol,
